@@ -21,9 +21,6 @@ node('gpu') {
                 sh """
                     . .venv-$BUILD_NUMBER/bin/activate
                     pytest -v --disable-warnings
-                    cd docs
-                    make clean
-                    make html
                 """
                 currentBuild.result = 'SUCCESS'
             }

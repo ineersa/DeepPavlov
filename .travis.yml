@@ -1,0 +1,15 @@
+language: python
+
+python:
+- '3.6'
+
+cache: pip
+
+git:
+  depth: false
+
+install:
+- pip3 install .[tests,docs]
+
+script:
+- cd docs; make clean; make html
