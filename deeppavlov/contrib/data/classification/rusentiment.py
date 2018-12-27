@@ -119,7 +119,8 @@ def _extract() -> tf.data.Dataset:
     return train_ds.concatenate(additional_train_ds)
 
 
-def _map_fn(l: tf.string, t: tf.string) -> Tuple[tf.string, tf.int64]:
+# def _map_fn(l: tf.string, t: tf.string) -> Tuple[tf.string, tf.int64]:
+def _map_fn(l, t):
     """
     This looks like dataset-specific stuff, so we don't make it reusable across different datasets.
 

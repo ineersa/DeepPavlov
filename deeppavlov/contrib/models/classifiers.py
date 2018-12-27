@@ -27,12 +27,14 @@ class TFHubRawTextClassifier(tf.keras.Model):
     Args:
         tfhub_spec: TF Hub eligible spec, if the text is not embedded inside data preparation pipeline
         train_emb: whether to update embedder weights jointly with classification head weights
+        inp_key: the key to look for in the input dictionary; if not specified, the model waits for tensor as input
         hidden_dim: a size of the only hidden layer or list of sizes for multilayer encoder
         num_classes: number of logits returned by the model
     """
     def __init__(self,
                  tfhub_spec: Optional[Union[str, hub.Module]] = None,
                  train_emb: bool = False,
+                 inp_key: Optional[str] = None,
                  hidden_dim: Union[int, List[int]] = 256,
                  num_classes: int = 2
                  ) -> None:
@@ -41,6 +43,7 @@ class TFHubRawTextClassifier(tf.keras.Model):
         # embed text if tfhub_spec is provided, or just pass through otherwise
         self.embedder = TFHubRawTextEmbedder(tfhub_spec=tfhub_spec,
                                              trainable=train_emb) if tfhub_spec else tf.keras.layers.Lambda(lambda x: x)
+        self.inp_key = inp_key
         self.encoder = tf.keras.layers.Dense(units=hidden_dim, activation='relu')
 
         # we encourage to use losses that wait for logits

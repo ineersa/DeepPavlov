@@ -13,10 +13,28 @@
 # limitations under the License.
 
 import tensorflow as tf
+from tensorflow.keras import backend as K
 
-from deeppavlov.contrib.data.classification.rusentiment import train_input_fn
+from deeppavlov.contrib.data.classification.rusentiment import train_input_fn as get_train_data
 from deeppavlov.contrib.models.classifiers import TFHubRawTextClassifier
 
-data = train_input_fn()
-my_model = TFHubRawTextClassifier()
-my_model.fit(data)
+
+# tf.enable_eager_execution()
+if tf.executing_eagerly():
+    raise RuntimeError('This example currently doesn\'t work in Eager mode.')
+
+sess = tf.Session()
+K.set_session(sess)
+
+train_data = get_train_data()
+
+sentiment_analyzer = TFHubRawTextClassifier(
+    tfhub_spec='http://files.deeppavlov.ai/deeppavlov_data/elmo_ru-twitter_2013-01_2018-04_600k_steps.tar.gz',
+    num_classes=5
+)
+
+sentiment_analyzer.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
+
+sentiment_analyzer.fit(train_data, steps_per_epoch=2)
