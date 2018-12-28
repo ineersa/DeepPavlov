@@ -35,13 +35,11 @@ def train_input_fn(batch_size: int = 32,
                    prefetch: Optional[int] = None
                    ) -> tf.data.Dataset:
     """
-    Download data from https://github.com/text-machine-lab/rusentiment, transform it and produce dataset in TensorFlow
-    format.
-
-
+    Download train data (both random and preselected posts) from https://github.com/text-machine-lab/rusentiment,
+    transform it and produce dataset in TensorFlow format.
 
     Todo:
-        make proper shuffling of random and preselected posts; make proper train/dev split
+        think of proper shuffling and train/dev split
     """
     dataset = _extract()
 
@@ -53,7 +51,6 @@ def train_input_fn(batch_size: int = 32,
         raise NotImplementedError('Tokenization is not implemented yet for this dataset')
 
     if shuffle:
-        # TODO: make it configurable
         dataset = dataset.shuffle(buffer_size=8*batch_size)
 
     if epochs is not None:
@@ -67,20 +64,13 @@ def train_input_fn(batch_size: int = 32,
 
 def test_input_fn(batch_size: int = 32,
                   tokenizer: Optional[callable] = None,
-                  shuffle: bool = True,
-                  epochs: Optional[int] = None,
-                    prefetch: Optional[int] = None
-                    ) -> tf.data.Dataset:
+                  prefetch: Optional[int] = None
+                  ) -> tf.data.Dataset:
     """
-    Download data from https://github.com/text-machine-lab/rusentiment, transform it and produce dataset in TensorFlow
-    format.
-
-
-
-    Todo:
-        make proper shuffling of random and preselected posts; make proper train/dev split
+    Download test data from https://github.com/text-machine-lab/rusentiment, transform it and produce dataset in
+    TensorFlow format.
     """
-    dataset = _extract()
+    dataset = _extract(data_type='test')
 
     dataset = dataset.map(_map_fn)
 
@@ -89,36 +79,41 @@ def test_input_fn(batch_size: int = 32,
     else:
         raise NotImplementedError('Tokenization is not implemented yet for this dataset')
 
-    if shuffle:
-        # TODO: make it configurable
-        dataset = dataset.shuffle(buffer_size=8*batch_size)
-
-    if epochs is not None:
-        dataset = dataset.repeat(count=epochs)
-
     if prefetch is not None:
         dataset.prefetch(buffer_size=prefetch)
 
     return dataset
 
 
-def _extract() -> tf.data.Dataset:
+def _extract(data_type: str = 'train') -> tf.data.Dataset:
     """Download data from the web or cache and output tf.data.Dataset ready to be transformed."""
 
     base_url = 'https://raw.githubusercontent.com/text-machine-lab/rusentiment/master/Dataset/{}'
 
-    # TODO: rename files
-    random_data_path = tf.keras.utils.get_file(fname='train_1.csv',
-                                               origin=base_url.format('rusentiment_random_posts.csv'))
-    preselected_data_path = tf.keras.utils.get_file(fname='train_2.csv',
-                                                    origin=base_url.format('rusentiment_preselected_posts.csv'))
+    if data_type == 'train':
 
-    train_ds = tf.data.experimental.CsvDataset(random_data_path, record_defaults=[tf.string, tf.string])
-    additional_train_ds = tf.data.experimental.CsvDataset(preselected_data_path, record_defaults=[tf.string, tf.string])
+        random_data_path = tf.keras.utils.get_file(fname='rusentiment_random_posts.csv',
+                                                   origin=base_url.format('rusentiment_random_posts.csv'))
+        preselected_data_path = tf.keras.utils.get_file(fname='rusentiment_preselected_posts.csv',
+                                                        origin=base_url.format('rusentiment_preselected_posts.csv'))
 
-    return train_ds.concatenate(additional_train_ds)
+        train_ds = tf.data.experimental.CsvDataset(random_data_path, record_defaults=[tf.string, tf.string])
+        additional_train_ds = tf.data.experimental.CsvDataset(preselected_data_path, record_defaults=[tf.string, tf.string])
+
+        return train_ds.concatenate(additional_train_ds)
+
+    elif data_type == 'test':
+
+        test_data_path = tf.keras.utils.get_file(fname='rusentiment_tests.csv',
+                                                 origin=base_url.format('rusentiment_tests.csv'))
+
+        return tf.data.experimental.CsvDataset(test_data_path, record_defaults=[tf.string, tf.string])
+
+    else:
+        raise ValueError(f'Unrecognized data type {data_type}! Please choose either "train" or "test"')
 
 
+# TODO: fix issues with type annotation
 # def _map_fn(l: tf.string, t: tf.string) -> Tuple[tf.string, tf.int64]:
 def _map_fn(l, t):
     """
