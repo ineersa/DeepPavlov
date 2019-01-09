@@ -1,20 +1,40 @@
-import warnings
+# Copyright 2019 Neural Networks and Deep Learning lab, MIPT
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""
+This whole file is just copypasted pieces from https://github.com/keras-team/keras-contrib. There are several reasons
+to do that:
+1. We don't want to have keras-contrib as an external dependency.
+2. We need to change some imports in order to rely on tf.keras, rather than standalone Keras.
+3. We need to get rid of backend-dependent code, deprecation warnings, add type annotations, update docstrings
+   in order to improve readability.
+
+As a temporary solution we use https://github.com/Hironsan/keras-crf-layer, but it relies on tf.contrib, so in the
+nearest future we need to refactor this file and use it instead.
+"""
 
 import tensorflow as tf
-import tensorflow.keras.backend as K
-from tf.keras import activations
-from tensorflow.keras import initializers
-from tensorflow.keras import regularizers
-from tensorflow.keras import constraints
-from tensorflow.keras.engine import Layer
-from tensorflow.keras.engine import InputSpec
+import tensorflow.python.keras.backend as K
+from tensorflow.python.keras import activations
+from tensorflow.python.keras import initializers
+from tensorflow.python.keras import regularizers
+from tensorflow.python.keras import constraints
+from tensorflow.python.keras.engine.base_layer import InputSpec  # , Layer
 
 
 class CRF(tf.keras.layers.Layer):
     """
     An implementation of linear chain conditional random field (CRF).
-
-    This implementation is heavily borrowed from https://github.com/keras-team/keras-contrib
 
     An linear chain CRF is defined to maximize the following likelihood function:
     $$ L(W, U, b; y_1, ..., y_n) := \frac{1}{Z}
@@ -24,30 +44,19 @@ class CRF(tf.keras.layers.Layer):
         $Z$: normalization constant
         $x_k, y_k$:  inputs and outputs
     This implementation has two modes for optimization:
-    1. (`join mode`) optimized by maximizing join likelihood,
-    which is optimal in theory of statistics.
+    1. (`join mode`) optimized by maximizing join likelihood, which is optimal in theory of statistics.
        Note that in this case, CRF must be the output/last layer.
-    2. (`marginal mode`) return marginal probabilities on each time
-    step and optimized via composition
-       likelihood (product of marginal likelihood), i.e.,
-       using `categorical_crossentropy` loss.
-       Note that in this case, CRF can be either the last layer or an
-       intermediate layer (though not explored).
-    For prediction (test phrase), one can choose either Viterbi
-    best path (class indices) or marginal
-    probabilities if probabilities are needed.
-    However, if one chooses *join mode* for training,
-    Viterbi output is typically better than marginal output,
-    but the marginal output will still perform
-    reasonably close, while if *marginal mode* is used for training,
-    marginal output usually performs
-    much better. The default behavior and `metrics.crf_accuracy`
-    is set according to this observation.
-    In addition, this implementation supports masking and accepts either
-    onehot or sparse target.
-    If you open a issue or a pull request about CRF, please
-    add 'cc @lzfelix' to notify Luiz Felix.
-    # Examples
+    2. (`marginal mode`) return marginal probabilities on each time step and optimized via composition likelihood
+       (product of marginal likelihood), i.e., using `categorical_crossentropy` loss.
+       Note that in this case, CRF can be either the last layer or an intermediate layer (though not explored).
+    For prediction (test phrase), one can choose either Viterbi best path (class indices) or marginal probabilities if
+    probabilities are needed. However, if one chooses *join mode* for training, Viterbi output is typically better than
+    marginal output, but the marginal output will still perform reasonably close, while if *marginal mode* is used for
+    training, marginal output usually performs much better. The default behavior and `metrics.crf_accuracy` is set
+    according to this observation. In addition, this implementation supports masking and accepts either one-hot or
+    sparse target.
+
+    Examples:
     ```python
         from keras_contrib.layers import CRF
         from keras_contrib.losses import crf_loss
@@ -67,8 +76,8 @@ class CRF(tf.keras.layers.Layer):
         # prediction give onehot representation of Viterbi best path
         y_hat = model.predict(x_test)
     ```
-    The following snippet shows how to load a persisted
-    model that uses the CRF layer:
+
+    The following snippet shows how to load a persisted model that uses the CRF layer:
     ```python
         from keras.models import load_model
         from keras_contrib.losses import import crf_loss
@@ -79,92 +88,51 @@ class CRF(tf.keras.layers.Layer):
         loaded_model = load_model('<path_to_model>',
                                   custom_objects=custom_objects)
     ```
-    # Arguments
+
+    Args:
         units: Positive integer, dimensionality of the output space.
         learn_mode: Either 'join' or 'marginal'.
-            The former train the model by maximizing join likelihood while the latter
-            maximize the product of marginal likelihood over all time steps.
-            One should use `losses.crf_nll` for 'join' mode
-            and `losses.categorical_crossentropy` or
-            `losses.sparse_categorical_crossentropy` for
-            `marginal` mode.  For convenience, simply
-            use `losses.crf_loss`, which will decide the proper loss as described.
+            The former train the model by maximizing join likelihood while the latter maximize the product of marginal
+            likelihood over all time steps. One should use `losses.crf_nll` for 'join' mode and
+            `losses.categorical_crossentropy` or `losses.sparse_categorical_crossentropy` for `marginal` mode.
+            For convenience, simply use `losses.crf_loss`, which will decide the proper loss as described.
         test_mode: Either 'viterbi' or 'marginal'.
-            The former is recommended and as default when `learn_mode = 'join'` and
-            gives one-hot representation of the best path at test (prediction) time,
-            while the latter is recommended and chosen as default
-            when `learn_mode = 'marginal'`,
-            which produces marginal probabilities for each time step.
-            For evaluating metrics, one should
-            use `metrics.crf_viterbi_accuracy` for 'viterbi' mode and
-            'metrics.crf_marginal_accuracy' for 'marginal' mode, or
-            simply use `metrics.crf_accuracy` for
-            both which automatically decides it as described.
+            The former is recommended and as default when `learn_mode = 'join'` and gives one-hot representation of the
+            best path at test (prediction) time, while the latter is recommended and chosen as default when
+            `learn_mode = 'marginal'`, which produces marginal probabilities for each time step. For evaluating metrics,
+            one should use `metrics.crf_viterbi_accuracy` for 'viterbi' mode and 'metrics.crf_marginal_accuracy' for
+            'marginal' mode, or simply use `metrics.crf_accuracy` for both which automatically decides it as described.
             One can also use both for evaluation at training.
-        sparse_target: Boolean (default False) indicating
-            if provided labels are one-hot or
-            indices (with shape 1 at dim 3).
-        use_boundary: Boolean (default True) indicating if trainable
-            start-end chain energies
-            should be added to model.
+        sparse_target: Boolean indicating if provided labels are one-hot or indices (with shape 1 at dim 3).
+        use_boundary: Boolean indicating if trainable start-end chain energies should be added to model.
         use_bias: Boolean, whether the layer uses a bias vector.
-        kernel_initializer: Initializer for the `kernel` weights matrix,
-            used for the linear transformation of the inputs.
-            (see [initializers](../initializers.md)).
-        chain_initializer: Initializer for the `chain_kernel` weights matrix,
-            used for the CRF chain energy.
-            (see [initializers](../initializers.md)).
-        boundary_initializer: Initializer for the `left_boundary`,
-            'right_boundary' weights vectors,
-            used for the start/left and end/right boundary energy.
-            (see [initializers](../initializers.md)).
+        kernel_initializer: Initializer for the `kernel` weights, used for the linear transformation of the inputs.
+        chain_initializer: Initializer for the `chain_kernel` weights matrix, used for the CRF chain energy.
+        boundary_initializer: Initializer for the `left_boundary`, 'right_boundary' weights vectors, used for the
+            start/left and end/right boundary energy.
         bias_initializer: Initializer for the bias vector
-            (see [initializers](../initializers.md)).
-        activation: Activation function to use
-            (see [activations](../activations.md)).
-            If you pass None, no activation is applied
-            (ie. "linear" activation: `a(x) = x`).
-        kernel_regularizer: Regularizer function applied to
-            the `kernel` weights matrix
-            (see [regularizer](../regularizers.md)).
-        chain_regularizer: Regularizer function applied to
-            the `chain_kernel` weights matrix
-            (see [regularizer](../regularizers.md)).
-        boundary_regularizer: Regularizer function applied to
-            the 'left_boundary', 'right_boundary' weight vectors
-            (see [regularizer](../regularizers.md)).
-        bias_regularizer: Regularizer function applied to the bias vector
-            (see [regularizer](../regularizers.md)).
-        kernel_constraint: Constraint function applied to
-            the `kernel` weights matrix
-            (see [constraints](../constraints.md)).
-        chain_constraint: Constraint function applied to
-            the `chain_kernel` weights matrix
-            (see [constraints](../constraints.md)).
-        boundary_constraint: Constraint function applied to
-            the `left_boundary`, `right_boundary` weights vectors
-            (see [constraints](../constraints.md)).
-        bias_constraint: Constraint function applied to the bias vector
-            (see [constraints](../constraints.md)).
-        input_dim: dimensionality of the input (integer).
-            This argument (or alternatively, the keyword argument `input_shape`)
-            is required when using this layer as the first layer in a model.
-        unroll: Boolean (default False). If True, the network will be
-            unrolled, else a symbolic loop will be used.
-            Unrolling can speed-up a RNN, although it tends
-            to be more memory-intensive.
-            Unrolling is only suitable for short sequences.
+        activation: Activation function to use. If you pass None, no activation is applied (ie. "linear": `a(x) = x`).
+        kernel_regularizer: Regularizer function applied to the `kernel` weights matrix.
+        chain_regularizer: Regularizer function applied to the `chain_kernel` weights matrix.
+        boundary_regularizer: Regularizer function applied to the 'left_boundary', 'right_boundary' weight vectors.
+        bias_regularizer: Regularizer function applied to the bias vector.
+        kernel_constraint: Constraint function applied to the `kernel` weights matrix.
+        chain_constraint: Constraint function applied to the `chain_kernel` weights matrix.
+        boundary_constraint: Constraint function applied to the `left_boundary`, `right_boundary` weights vectors.
+        bias_constraint: Constraint function applied to the bias vector.
+        input_dim: dimensionality of the input (integer). This argument (or alternatively, the keyword argument
+            `input_shape`) is required when using this layer as the first layer in a model.
+        unroll: If True, the network will be unrolled, else a symbolic loop will be used. Unrolling can speed-up a RNN,
+            although it tends to be more memory-intensive. Unrolling is only suitable for short sequences.
+
     # Input shape
         3D tensor with shape `(nb_samples, timesteps, input_dim)`.
     # Output shape
         3D tensor with shape `(nb_samples, timesteps, units)`.
     # Masking
-        This layer supports masking for input data with a variable number
-        of timesteps. To introduce masks to your data,
-        use an [Embedding](embeddings.md) layer with the `mask_zero` parameter
-        set to `True`.
+        This layer supports masking for input data with a variable number of timesteps. To introduce masks to your data,
+        use an [Embedding](embeddings.md) layer with the `mask_zero` parameter set to `True`.
     """
-
     def __init__(self, units,
                  learn_mode='join',
                  test_mode=None,
@@ -224,18 +192,18 @@ class CRF(tf.keras.layers.Layer):
         self.input_spec = [InputSpec(shape=input_shape)]
         self.input_dim = input_shape[-1]
 
-        self.kernel = self.add_weight((self.input_dim, self.units),
-                                      name='kernel',
+        self.kernel = self.add_weight(name='kernel',
+                                      shape=(self.input_dim, self.units),
                                       initializer=self.kernel_initializer,
                                       regularizer=self.kernel_regularizer,
                                       constraint=self.kernel_constraint)
-        self.chain_kernel = self.add_weight((self.units, self.units),
+        self.chain_kernel = self.add_weight(shape=(self.units, self.units),
                                             name='chain_kernel',
                                             initializer=self.chain_initializer,
                                             regularizer=self.chain_regularizer,
                                             constraint=self.chain_constraint)
         if self.use_bias:
-            self.bias = self.add_weight((self.units,),
+            self.bias = self.add_weight(shape=(self.units,),
                                         name='bias',
                                         initializer=self.bias_initializer,
                                         regularizer=self.bias_regularizer,
@@ -244,12 +212,12 @@ class CRF(tf.keras.layers.Layer):
             self.bias = 0
 
         if self.use_boundary:
-            self.left_boundary = self.add_weight((self.units,),
+            self.left_boundary = self.add_weight(shape=(self.units,),
                                                  name='left_boundary',
                                                  initializer=self.boundary_initializer,
                                                  regularizer=self.boundary_regularizer,
                                                  constraint=self.boundary_constraint)
-            self.right_boundary = self.add_weight((self.units,),
+            self.right_boundary = self.add_weight(shape=(self.units,),
                                                   name='right_boundary',
                                                   initializer=self.boundary_initializer,
                                                   regularizer=self.boundary_regularizer,
@@ -313,36 +281,36 @@ class CRF(tf.keras.layers.Layer):
         base_config = super(CRF, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
-    @property
-    def loss_function(self):
-        warnings.warn('CRF.loss_function is deprecated '
-                      'and it might be removed in the future. Please '
-                      'use losses.crf_loss instead.')
-        return crf_loss
+    # @property
+    # def loss_function(self):
+    #     warnings.warn('CRF.loss_function is deprecated '
+    #                   'and it might be removed in the future. Please '
+    #                   'use losses.crf_loss instead.')
+    #     return crf_loss
 
-    @property
-    def accuracy(self):
-        warnings.warn('CRF.accuracy is deprecated and it '
-                      'might be removed in the future. Please '
-                      'use metrics.crf_accuracy')
-        if self.test_mode == 'viterbi':
-            return crf_viterbi_accuracy
-        else:
-            return crf_marginal_accuracy
+    # @property
+    # def accuracy(self):
+    #     warnings.warn('CRF.accuracy is deprecated and it '
+    #                   'might be removed in the future. Please '
+    #                   'use metrics.crf_accuracy')
+    #     if self.test_mode == 'viterbi':
+    #         return crf_viterbi_accuracy
+    #     else:
+    #         return crf_marginal_accuracy
 
-    @property
-    def viterbi_acc(self):
-        warnings.warn('CRF.viterbi_acc is deprecated and it might '
-                      'be removed in the future. Please '
-                      'use metrics.viterbi_acc instead.')
-        return crf_viterbi_accuracy
+    # @property
+    # def viterbi_acc(self):
+    #     warnings.warn('CRF.viterbi_acc is deprecated and it might '
+    #                   'be removed in the future. Please '
+    #                   'use metrics.viterbi_acc instead.')
+    #     return crf_viterbi_accuracy
 
-    @property
-    def marginal_acc(self):
-        warnings.warn('CRF.moarginal_acc is deprecated and it '
-                      'might be removed in the future. Please '
-                      'use metrics.marginal_acc instead.')
-        return crf_marginal_accuracy
+    # @property
+    # def marginal_acc(self):
+    #     warnings.warn('CRF.moarginal_acc is deprecated and it '
+    #                   'might be removed in the future. Please '
+    #                   'use metrics.marginal_acc instead.')
+    #     return crf_marginal_accuracy
 
     @staticmethod
     def softmaxNd(x, axis=-1):
@@ -378,7 +346,8 @@ class CRF(tf.keras.layers.Layer):
         return energy
 
     def get_log_normalization_constant(self, input_energy, mask, **kwargs):
-        """Compute logarithm of the normalization constant Z, where
+        """
+        Compute logarithm of the normalization constant Z, where
         Z = sum exp(-E) -> logZ = log sum exp(-E) =: -nlogZ
         """
         # should have logZ[:, i] == logZ[:, j] for any i, j
@@ -386,8 +355,7 @@ class CRF(tf.keras.layers.Layer):
         return logZ[:, 0]
 
     def get_energy(self, y_true, input_energy, mask):
-        """Energy = a1' y1 + u1' y1 + y1' U y2 + u2' y2 + y2' U y3 + u3' y3 + an' y3
-        """
+        """Energy = a1' y1 + u1' y1 + y1' U y2 + u2' y2 + y2' U y3 + u3' y3 + an' y3"""
         input_energy = K.sum(input_energy * y_true, 2)  # (B, T)
         # (B, T-1)
         chain_energy = K.sum(K.dot(y_true[:, :-1, :],
@@ -404,8 +372,9 @@ class CRF(tf.keras.layers.Layer):
         return total_energy
 
     def get_negative_log_likelihood(self, y_true, X, mask):
-        """Compute the loss, i.e., negative log likelihood (normalize by number of time steps)
-           likelihood = 1/Z * exp(-E) ->  neg_log_like = - log(1/Z * exp(-E)) = logZ + E
+        """
+        Compute the loss, i.e., negative log likelihood (normalize by number of time steps)
+        likelihood = 1/Z * exp(-E) ->  neg_log_like = - log(1/Z * exp(-E)) = logZ + E
         """
         input_energy = self.activation(K.dot(X, self.kernel) + self.bias)
         if self.use_boundary:
@@ -429,10 +398,11 @@ class CRF(tf.keras.layers.Layer):
         prev_target_val, i, chain_energy = states[:3]
         t = K.cast(i[0, 0], dtype='int32')
         if len(states) > 3:
-            if K.backend() == 'theano':
-                m = states[3][:, t:(t + 2)]
-            else:
-                m = K.tf.slice(states[3], [0, t], [-1, 2])
+            # if K.backend() == 'theano':
+            #     m = states[3][:, t:(t + 2)]
+            # else:
+            m = K.tf.slice(states[3], [0, t], [-1, 2])
+
             input_energy_t = input_energy_t * K.expand_dims(m[:, 0])
             # (1, F, F)*(B, 1, 1) -> (B, F, F)
             chain_energy = chain_energy * K.expand_dims(
@@ -537,22 +507,22 @@ class CRF(tf.keras.layers.Layer):
         argmin_tables = K.reverse(argmin_tables, 1)
         # matrix instead of vector is required by tf `K.rnn`
         initial_best_idx = [K.expand_dims(argmin_tables[:, 0, 0])]
-        if K.backend() == 'theano':
-            initial_best_idx = [K.T.unbroadcast(initial_best_idx[0], 1)]
+        # if K.backend() == 'theano':
+        #     initial_best_idx = [K.T.unbroadcast(initial_best_idx[0], 1)]
 
         def gather_each_row(params, indices):
             n = K.shape(indices)[0]
-            if K.backend() == 'theano':
-                return params[K.T.arange(n), indices]
-            else:
-                indices = K.transpose(K.stack([K.tf.range(n), indices]))
-                return K.tf.gather_nd(params, indices)
+            # if K.backend() == 'theano':
+            #     return params[K.T.arange(n), indices]
+            # else:
+            indices = K.transpose(K.stack([K.tf.range(n), indices]))
+            return K.tf.gather_nd(params, indices)
 
         def find_path(argmin_table, best_idx):
             next_best_idx = gather_each_row(argmin_table, best_idx[0][:, 0])
             next_best_idx = K.expand_dims(next_best_idx)
-            if K.backend() == 'theano':
-                next_best_idx = K.T.unbroadcast(next_best_idx, 1)
+            # if K.backend() == 'theano':
+            #     next_best_idx = K.T.unbroadcast(next_best_idx, 1)
             return next_best_idx, [next_best_idx]
 
         _, best_paths, _ = K.rnn(find_path, argmin_tables, initial_best_idx,
@@ -561,94 +531,3 @@ class CRF(tf.keras.layers.Layer):
         best_paths = K.squeeze(best_paths, 2)
 
         return K.one_hot(best_paths, self.units)
-
-
-def crf_nll(y_true, y_pred):
-    """The negative log-likelihood for linear chain Conditional Random Field (CRF).
-    This loss function is only used when the `layers.CRF` layer
-    is trained in the "join" mode.
-    # Arguments
-        y_true: tensor with true targets.
-        y_pred: tensor with predicted targets.
-    # Returns
-        A scalar representing corresponding to the negative log-likelihood.
-    # Raises
-        TypeError: If CRF is not the last layer.
-    If you open an issue or a pull request about CRF, please
-    add 'cc @lzfelix' to notify Luiz Felix.
-    """
-
-    crf, idx = y_pred._keras_history[:2]
-    if crf._outbound_nodes:
-        raise TypeError('When learn_model="join", CRF must be the last layer.')
-    if crf.sparse_target:
-        y_true = K.one_hot(K.cast(y_true[:, :, 0], 'int32'), crf.units)
-    X = crf._inbound_nodes[idx].input_tensors[0]
-    mask = crf._inbound_nodes[idx].input_masks[0]
-    nloglik = crf.get_negative_log_likelihood(y_true, X, mask)
-    return nloglik
-
-
-def crf_loss(y_true, y_pred):
-    """General CRF loss function depending on the learning mode.
-    # Arguments
-        y_true: tensor with true targets.
-        y_pred: tensor with predicted targets.
-    # Returns
-        If the CRF layer is being trained in the join mode, returns the negative
-        log-likelihood. Otherwise returns the categorical crossentropy implemented
-        by the underlying Keras backend.
-    If you open an issue or a pull request about CRF, please
-    add 'cc @lzfelix' to notify Luiz Felix.
-    """
-    crf, idx = y_pred._keras_history[:2]
-    if crf.learn_mode == 'join':
-        return crf_nll(y_true, y_pred)
-    else:
-        if crf.sparse_target:
-            return tf.keras.metrics.sparse_categorical_crossentropy(y_true, y_pred)
-        else:
-            return tf.keras.metrics.categorical_crossentropy(y_true, y_pred)
-
-
-def _get_accuracy(y_true, y_pred, mask, sparse_target=False):
-    y_pred = K.argmax(y_pred, -1)
-    if sparse_target:
-        y_true = K.cast(y_true[:, :, 0], K.dtype(y_pred))
-    else:
-        y_true = K.argmax(y_true, -1)
-    judge = K.cast(K.equal(y_pred, y_true), K.floatx())
-    if mask is None:
-        return K.mean(judge)
-    else:
-        mask = K.cast(mask, K.floatx())
-        return K.sum(judge * mask) / K.sum(mask)
-
-
-def crf_viterbi_accuracy(y_true, y_pred):
-    '''Use Viterbi algorithm to get best path, and compute its accuracy.
-    `y_pred` must be an output from CRF.'''
-    crf, idx = y_pred._keras_history[:2]
-    X = crf._inbound_nodes[idx].input_tensors[0]
-    mask = crf._inbound_nodes[idx].input_masks[0]
-    y_pred = crf.viterbi_decoding(X, mask)
-    return _get_accuracy(y_true, y_pred, mask, crf.sparse_target)
-
-
-def crf_marginal_accuracy(y_true, y_pred):
-    '''Use time-wise marginal argmax as prediction.
-    `y_pred` must be an output from CRF with `learn_mode="marginal"`.'''
-    crf, idx = y_pred._keras_history[:2]
-    X = crf._inbound_nodes[idx].input_tensors[0]
-    mask = crf._inbound_nodes[idx].input_masks[0]
-    y_pred = crf.get_marginal_prob(X, mask)
-    return _get_accuracy(y_true, y_pred, mask, crf.sparse_target)
-
-
-def crf_accuracy(y_true, y_pred):
-    '''Ge default accuracy based on CRF `test_mode`.'''
-    crf, idx = y_pred._keras_history[:2]
-    if crf.test_mode == 'viterbi':
-        return crf_viterbi_accuracy(y_true, y_pred)
-    else:
-        return crf_marginal_accuracy(y_true, y_pred)

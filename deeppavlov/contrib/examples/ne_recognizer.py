@@ -15,8 +15,9 @@
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
 
-from deeppavlov.contrib.data.classification.rusentiment import train_input_fn as get_train_data
-from deeppavlov.contrib.models.classifiers import TFHubRawTextClassifier
+from deeppavlov.contrib.vocabulary import Vocabulary
+from deeppavlov.contrib.data.sequence_tagging.conll2003 import train_input_fn
+from deeppavlov.contrib.models.sequence_taggers import TFHubCRFSequenceTagger
 
 
 # tf.enable_eager_execution()
@@ -30,22 +31,22 @@ K.set_session(sess)
 
 # By TF conventions, calling input_fn produces tf.data.Dataset object, however input_fn is also suitable
 # for tf.estimator.Estimator.train() method
-train_data = get_train_data()
+train_data = train_input_fn()
+
+# for now create label vocab by hand, however it will be
+tag_vocab = Vocabulary(tf.constant(['O', 'B-LOC', 'B-PER', 'B-ORG', 'I-PER', 'I-ORG', 'B-MISC', 'I-LOC', 'I-MISC']))
 
 # Instantiation of a model class preferably should be possible without passing any arguments (every arguments should
 # have reasonable default values); Keras inherits this design principle from scikit-learn. We need some non-defaults...
-sentiment_analyzer = TFHubRawTextClassifier(
-    tfhub_spec='http://files.deeppavlov.ai/deeppavlov_data/elmo_ru-twitter_2013-01_2018-04_600k_steps.tar.gz',
-    num_classes=5
-)
+ne_recognizer = TFHubCRFSequenceTagger(tag_vocab=tag_vocab, tfhub_spec='https://tfhub.dev/google/elmo/2')
 
 # TF developers are going to unify in TF2.0 native TF losses, optimizers and metrics with corresponding Keras versions
-sentiment_analyzer.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+ne_recognizer.compile(loss={'logits': ne_recognizer.crf.loss}, optimizer='adam', metrics=['accuracy'])
 
 sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
 
 # Train for just a couple of batches for demonstration purposes
-sentiment_analyzer.fit(train_data, steps_per_epoch=2)
+ne_recognizer.fit(train_data, steps_per_epoch=2)
 
 # This is similar to sentiment_analyzer.predict(), but works for now without additional reinitialization trick
-print(sentiment_analyzer(['привет! Как дела?']).eval(session=sess))
+print(ne_recognizer([['привет!', 'Как дела?']]).eval(session=sess))

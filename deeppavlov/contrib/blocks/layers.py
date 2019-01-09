@@ -73,6 +73,61 @@ class TFHubRawTextEmbedder(tf.keras.layers.Layer):
         return self._out_info.get_shape()
 
 
+class ELMoSequenceEmbedder(tf.keras.layers.Layer):
+    """
+    This layer wraps TF Hub ELMo embedding module.
+
+    Args:
+        tfhub_spec: TF Hub eligible value (url, filepath, ModuleSpec object)
+        trainable: boolean flag responsible for the training of TF Hub module weights
+        tags: a collection of strings corresponding to graph variants of the module; passed to the module initialization
+        signature: a signature of TF Hub module to retrieve output dict from
+        out_info_key: a key in the output
+        kwargs: keyword arguments passed to :meth:`super().__init__`
+
+    Todo:
+        elaborate on different signatures, output keys and tags of TF Hub modules
+    """
+    def __init__(self,
+                 tfhub_spec: Union[str, hub.ModuleSpec],
+                 trainable: bool = False,
+                 name: str = 'tfhub_text_module',
+                 tags: Optional[Collection[str]] = None,
+                 signature: str = 'tokens',
+                 out_info_key: str = 'elmo',
+                 **kwargs) -> None:
+
+        self.hub_module = hub.Module(tfhub_spec, trainable=trainable, name=name, tags=tags)
+
+        if signature == 'tokens' and out_info_key == 'elmo':
+            self.signature = signature
+            self.out_info_key = out_info_key
+        else:
+            raise NotImplementedError('Currently, only the "tokens" signature of TF Hub module '
+                                      'with the "elmo" output key is supported')
+
+        self._out_info = self.hub_module.get_output_info_dict()[out_info_key]
+
+        super(ELMoSequenceEmbedder, self).__init__(**kwargs)
+
+    def call(self,
+             inputs: Mapping[str, tf.Tensor],
+             mask: Optional[Union[tf.Tensor, list]] = None
+             ) -> tf.Tensor:
+        """
+        Signatures with multiple inputs wait for input as a dictionary, however the default signature of all TF hub
+        modules (as far as I know) waits for usual tensor. Currently, output is also tensor, but, probably, it could be
+        useful for some cases to obtain output as a dictionary also.
+        """
+        return self.hub_module(inputs,
+                               as_dict=True,
+                               signature=self.signature,
+                               )[self.out_info_key]
+
+    def compute_output_shape(self, input_shape):
+        return self._out_info.get_shape()
+
+
 class LayerNormalization(tf.keras.layers.Layer):
 
     def __init__(self,
