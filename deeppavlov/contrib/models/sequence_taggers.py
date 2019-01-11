@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from logging import getLogger
 from typing import Mapping, Optional, Union
 
 import tensorflow as tf
@@ -21,6 +22,9 @@ from deeppavlov.contrib.vocabulary import Vocabulary
 from deeppavlov.contrib.blocks.layers import ELMoSequenceEmbedder
 # from deeppavlov.contrib.blocks.crf import CRF
 from deeppavlov.contrib.blocks.crf_layer import CRFLayer
+
+
+logger = getLogger(__name__)
 
 
 class TFHubCRFSequenceTagger(tf.keras.Model):
@@ -55,19 +59,22 @@ class TFHubCRFSequenceTagger(tf.keras.Model):
 
         self.encoder = encoder or tf.keras.layers.Lambda(lambda x: x)
 
+        self.tag_projection_layer = tf.keras.layers.TimeDistributed(tf.keras.layers.Dense(units=9))
+
         # self.crf = CRF(units=tag_vocab.size())
-        self.crf = CRFLayer()
+        self.crf = CRFLayer(name='crf')
 
     def call(self,
              inputs: Union[tf.Tensor, Mapping[str, tf.Tensor]],
              training: bool = True,
              mask: Optional[Union[tf.Tensor, list]] = None
              ) -> Mapping[str, tf.Tensor]:
-        if self.tokens_inp_key:
-            inp_text = inputs[self.tokens_inp_key]
-        else:
-            inp_text = inputs
-        emb = self.embedder(inp_text)
+        # if self.tokens_inp_key:
+        #     inp_text = inputs[self.tokens_inp_key]
+        # else:
+        #     inp_text = inputs
+        emb = self.embedder(inputs)
         h = self.encoder(emb)
-        humanized_tags = self.tag_vocab.reverse_lookup(tf.constant([1, 2, 3]))
-        return {'logits': self.crf(h), 'tags': humanized_tags}
+        p = self.tag_projection_layer(h)
+        humanized_tags = self.tag_vocab.reverse_lookup(tf.constant([1, 2, 3], dtype=tf.int64))
+        return {"logits": self.crf([p, inputs['sequence_len']]), "tags": humanized_tags}

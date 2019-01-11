@@ -154,7 +154,7 @@ class CRFLayer(Layer):
     def __init__(self, transition_params=None, **kwargs):
         super(CRFLayer, self).__init__(**kwargs)
         self.transition_params = transition_params
-        self.input_spec = [InputSpec(ndim=3), InputSpec(ndim=2)]
+        self.input_spec = [InputSpec(ndim=3), InputSpec(ndim=1)]  # 2
         self.supports_masking = True
 
     def compute_output_shape(self, input_shape):
@@ -171,16 +171,16 @@ class CRFLayer(Layer):
         """
         assert len(input_shape) == 2
         assert len(input_shape[0]) == 3
-        assert len(input_shape[1]) == 2
+        assert len(input_shape[1]) == 1  # 2
         n_steps = input_shape[0][1]
         n_classes = int(input_shape[0][2])
-        assert n_steps is None or n_steps >= 2
+        # assert n_steps is None or n_steps >= 2
 
         self.transition_params = self.add_weight(shape=(n_classes, n_classes),
                                                  initializer='uniform',
                                                  name='transition')
         self.input_spec = [InputSpec(dtype=K.floatx(), shape=(None, n_steps, n_classes)),
-                           InputSpec(dtype='int32', shape=(None, 1))]
+                           InputSpec(dtype='int32', shape=(None,))]  # , 1
         self.built = True
 
     def viterbi_decode(self, potentials, sequence_length):
@@ -198,9 +198,8 @@ class CRFLayer(Layer):
         return decode_tags
 
     def call(self, inputs, mask=None, **kwargs):
-        features = inputs['tokens']
-        sequence_lengths = inputs['sequence_len']
-        self.sequence_lengths = K.flatten(sequence_lengths)
+        features, sequence_lengths = inputs
+        self.sequence_lengths = sequence_lengths  # K.flatten(sequence_lengths)
         y_pred = self.viterbi_decode(features, self.sequence_lengths)
         nb_classes = self.input_spec[0].shape[2]
         y_pred_one_hot = K.one_hot(y_pred, nb_classes)
@@ -217,7 +216,8 @@ class CRFLayer(Layer):
         Returns:
             loss: A scalar containing the log-likelihood of the given sequence of tag indices.
         """
-        y_true = K.cast(K.argmax(y_true, axis=-1), dtype='int32')
+        # y_true = K.cast(K.argmax(y_true, axis=-1), dtype='int32')
+        # y_true = K.cast(y_true, dtype=tf.int32)
         log_likelihood, self.transition_params = tf.contrib.crf.crf_log_likelihood(
             y_pred, y_true, self.sequence_lengths, self.transition_params)
         loss = tf.reduce_mean(-log_likelihood)

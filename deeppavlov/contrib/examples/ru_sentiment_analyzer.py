@@ -15,7 +15,7 @@
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
 
-from deeppavlov.contrib.data.classification.rusentiment import train_input_fn as get_train_data
+from deeppavlov.contrib.data.classification.rusentiment import train_input_fn  # , test_input_fn
 from deeppavlov.contrib.models.classifiers import TFHubRawTextClassifier
 
 
@@ -28,9 +28,10 @@ if tf.executing_eagerly():
 sess = tf.Session()
 K.set_session(sess)
 
-# By TF conventions, calling input_fn produces tf.data.Dataset object, however input_fn is also suitable
+# By TF conventions, calling input_fn produces tf.data.Dataset object, however input_fn is also should be suitable
 # for tf.estimator.Estimator.train() method
-train_data = get_train_data()
+train_data = train_input_fn()
+# test_data = test_input_fn()
 
 # Instantiation of a model class preferably should be possible without passing any arguments (every arguments should
 # have reasonable default values); Keras inherits this design principle from scikit-learn. We need some non-defaults...

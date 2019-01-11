@@ -31,7 +31,7 @@ class Vocabulary:
     def __init__(self,
                  source: Union[str, tf.Tensor],
                  index_default_value: int = 0,
-                 reverse_default_value: str = '<UNK>'
+                 reverse_default_value: str = ''
                  ) -> None:
         if isinstance(source, str):
             self.lookup_table = tf.contrib.lookup.index_table_from_file(source, default_value=index_default_value)

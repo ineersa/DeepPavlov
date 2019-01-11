@@ -40,8 +40,9 @@ tag_vocab = Vocabulary(tf.constant(['O', 'B-LOC', 'B-PER', 'B-ORG', 'I-PER', 'I-
 # have reasonable default values); Keras inherits this design principle from scikit-learn. We need some non-defaults...
 ne_recognizer = TFHubCRFSequenceTagger(tag_vocab=tag_vocab, tfhub_spec='https://tfhub.dev/google/elmo/2')
 
+print(ne_recognizer.summary())
 # TF developers are going to unify in TF2.0 native TF losses, optimizers and metrics with corresponding Keras versions
-ne_recognizer.compile(loss={'logits': ne_recognizer.crf.loss}, optimizer='adam', metrics=['accuracy'])
+ne_recognizer.compile(loss={'crf': ne_recognizer.crf.loss}, optimizer='adam', metrics=['accuracy'])
 
 sess.run([tf.global_variables_initializer(), tf.tables_initializer()])
 
